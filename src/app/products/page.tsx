@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { ProductCard } from '@/components/ProductCard'
+import { ProductsGrid } from '@/components/ProductsGrid'
 
 export const metadata = {
   title: 'Notre boutique',
@@ -11,6 +11,7 @@ async function getProducts() {
 
 export default async function ProductsPage() {
   const products = await getProducts()
+  const categories = [...new Set(products.map((p) => p.category).filter(Boolean))] as string[]
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-12">
@@ -24,11 +25,7 @@ export default async function ProductsPage() {
       {products.length === 0 ? (
         <p className="text-text-muted">Aucun produit disponible.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        <ProductsGrid products={products} categories={categories} />
       )}
     </main>
   )
