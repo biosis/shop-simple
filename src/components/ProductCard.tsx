@@ -2,9 +2,11 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { useState } from 'react'
 import type { Product } from '@/generated/prisma/client'
 import { Badge, Button, Card } from '@/components/ui'
 import { formatPrice } from '@/lib/utils'
+import { useCartStore } from '@/store/cart'
 
 interface ProductCardProps {
   product: Product
@@ -14,6 +16,18 @@ interface ProductCardProps {
 export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const { name, slug, price, images, stock, category } = product
   const imageSrc = images[0] ?? null
+  const addItem = useCartStore((state) => state.addItem)
+  const [isAdded, setIsAdded] = useState(false)
+
+  function handleAddToCart() {
+    if (onAddToCart) {
+      onAddToCart(product)
+    } else {
+      addItem({ productId: product.id, name: product.name, price: product.price, image: images[0] ?? '' })
+    }
+    setIsAdded(true)
+    setTimeout(() => setIsAdded(false), 1500)
+  }
 
   return (
     <Card className="overflow-hidden group hover:shadow-md hover:scale-[1.01] transition-all duration-200">
@@ -54,9 +68,9 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           size="sm"
           fullWidth
           disabled={stock === 0}
-          onClick={() => onAddToCart ? onAddToCart(product) : console.log('add to cart:', product)}
+          onClick={handleAddToCart}
         >
-          {stock === 0 ? 'Indisponible' : 'Ajouter au panier'}
+          {stock === 0 ? 'Indisponible' : isAdded ? 'Ajouté ✓' : 'Ajouter au panier'}
         </Button>
       </div>
     </Card>
