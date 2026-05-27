@@ -4,9 +4,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import type { Product } from '@/generated/prisma/client'
-import { Badge, Button, Card } from '@/components/ui'
+import { Badge, Button, Card, Spinner } from '@/components/ui'
 import { formatPrice } from '@/lib/utils'
 import { useCartStore } from '@/store/cart'
+import { checkAndAddToCart } from '@/server/actions/cart'
 
 interface ProductCardProps {
   product: Product
@@ -18,13 +19,24 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const imageSrc = images[0] ?? null
   const addItem = useCartStore((state) => state.addItem)
   const [isAdded, setIsAdded] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  function handleAddToCart() {
+  async function handleAddToCart() {
     if (onAddToCart) {
       onAddToCart(product)
-    } else {
-      addItem({ productId: product.id, name: product.name, price: product.price, image: images[0] ?? '' })
+      return
     }
+    setIsLoading(true)
+    setErrorMsg(null)
+    const result = await checkAndAddToCart(product.id)
+    setIsLoading(false)
+    if (!result.success) {
+      setErrorMsg(result.error)
+      setTimeout(() => setErrorMsg(null), 3000)
+      return
+    }
+    addItem({ productId: product.id, name: product.name, price: product.price, image: images[0] ?? '' })
     setIsAdded(true)
     setTimeout(() => setIsAdded(false), 1500)
   }
@@ -67,11 +79,20 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           variant="primary"
           size="sm"
           fullWidth
-          disabled={stock === 0}
+          disabled={stock === 0 || isLoading}
           onClick={handleAddToCart}
         >
-          {stock === 0 ? 'Indisponible' : isAdded ? 'Ajouté ✓' : 'Ajouter au panier'}
+          {stock === 0
+            ? 'Indisponible'
+            : isLoading
+            ? <Spinner size="sm" />
+            : isAdded
+            ? 'Ajouté ✓'
+            : 'Ajouter au panier'}
         </Button>
+        {errorMsg && (
+          <p className="text-xs text-red-500">{errorMsg}</p>
+        )}
       </div>
     </Card>
   )

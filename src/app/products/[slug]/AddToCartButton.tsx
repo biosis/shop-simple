@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import type { Product } from '@/generated/prisma/client'
-import { Button } from '@/components/ui'
+import { Button, Spinner } from '@/components/ui'
 import { useCartStore } from '@/store/cart'
+import { checkAndAddToCart } from '@/server/actions/cart'
 
 interface AddToCartButtonProps {
   product: Product
@@ -12,8 +13,19 @@ interface AddToCartButtonProps {
 export function AddToCartButton({ product }: AddToCartButtonProps) {
   const addItem = useCartStore((state) => state.addItem)
   const [isAdded, setIsAdded] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  function handleClick() {
+  async function handleClick() {
+    setIsLoading(true)
+    setErrorMsg(null)
+    const result = await checkAndAddToCart(product.id)
+    setIsLoading(false)
+    if (!result.success) {
+      setErrorMsg(result.error)
+      setTimeout(() => setErrorMsg(null), 3000)
+      return
+    }
     addItem({
       productId: product.id,
       name: product.name,
@@ -25,14 +37,25 @@ export function AddToCartButton({ product }: AddToCartButtonProps) {
   }
 
   return (
-    <Button
-      variant="primary"
-      size="lg"
-      fullWidth
-      disabled={product.stock === 0}
-      onClick={handleClick}
-    >
-      {product.stock === 0 ? 'Indisponible' : isAdded ? 'Ajouté ✓' : 'Ajouter au panier'}
-    </Button>
+    <div className="space-y-2">
+      <Button
+        variant="primary"
+        size="lg"
+        fullWidth
+        disabled={product.stock === 0 || isLoading}
+        onClick={handleClick}
+      >
+        {product.stock === 0
+          ? 'Indisponible'
+          : isLoading
+          ? <Spinner size="sm" />
+          : isAdded
+          ? 'Ajouté ✓'
+          : 'Ajouter au panier'}
+      </Button>
+      {errorMsg && (
+        <p className="text-sm text-red-500">{errorMsg}</p>
+      )}
+    </div>
   )
 }
